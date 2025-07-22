@@ -1,5 +1,7 @@
-﻿# Windows 11 Development Configuration Wizard
+# Windows 11 Development Configuration Wizard
 # This script helps configure Windows 11 for development with an interactive wizard
+
+# Needs: "set-executionpolicy remotesigned"
 
 # Exit if not running as administrator
 if (-NOT ([Security.Principal.WindowsPrincipal] [Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole] "Administrator")) {
@@ -49,7 +51,14 @@ function Set-ShowHiddenFiles {
 # Function to show full path in title bar
 function Set-ShowFullPath {
     try {
-        Set-ItemProperty -Path "HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\CabinetState" -Name "FullPath" -Value 1 -Force
+        # Create the CabinetState key if it doesn't exist
+        $cabinetStatePath = "HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\CabinetState"
+        if (!(Test-Path $cabinetStatePath)) {
+            New-Item -Path $cabinetStatePath -Force | Out-Null
+            Write-Host "Created CabinetState registry key" -ForegroundColor Gray
+        }
+        
+        Set-ItemProperty -Path $cabinetStatePath -Name "FullPath" -Value 1 -Force
         Write-Host "✓ Full file paths will be shown in title bar" -ForegroundColor Green
     }
     catch {
@@ -256,4 +265,12 @@ else {
 
 Write-Host ""
 Write-Host "Press any key to exit..." -ForegroundColor Gray
-$null = $Host.UI.RawUI.ReadKey('NoEcho,IncludeKeyDown')
+
+# More compatible way to wait for user input
+try {
+    $null = $Host.UI.RawUI.ReadKey('NoEcho,IncludeKeyDown')
+}
+catch {
+    # Fallback for environments where ReadKey is not available
+    Read-Host "Press Enter to exit"
+}
